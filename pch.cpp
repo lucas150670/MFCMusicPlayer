@@ -17,3 +17,6 @@
 // link xaudio2_9 dll
 
 #pragma comment(lib, "xaudio2.lib")
+
+// High DPI Patch
+#pragma comment(lib, "Shcore.lib")

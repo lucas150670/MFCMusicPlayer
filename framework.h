@@ -59,6 +59,7 @@ extern "C" {
 #endif
 #include <crtdbg.h>
 #include <synchapi.h>
+#include <ShellScalingAPI.h>
 
 // Standard C++ Header Files
 #include <cstdlib>
