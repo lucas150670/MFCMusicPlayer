@@ -64,6 +64,7 @@ extern "C" {
 #include <cstdlib>
 #include <list>
 #include <functional>
+#include <string>
 
 // XAudio2 Header
 #include <xaudio2.h>

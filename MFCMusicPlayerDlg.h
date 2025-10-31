@@ -41,9 +41,12 @@ public:
 	afx_msg LRESULT OnPlayerTimeChange(WPARAM wParam, LPARAM lParam);
 	afx_msg LRESULT OnPlayerPause(WPARAM wParam, LPARAM lParam);
 	afx_msg LRESULT OnPlayerStop(WPARAM wParam, LPARAM lParam);
+	LRESULT OnAlbumArtInit(WPARAM wParam, LPARAM lParam);
 	afx_msg void OnClose();
 	void DestroyMediaPlayer();
 	virtual void OnCancel();
 	CStatic m_labelTime;
 	afx_msg void OnClickedButtonStop();
+	CStatic m_labelAlbumArt;
+	CSliderCtrl m_sliderProgress;
 };

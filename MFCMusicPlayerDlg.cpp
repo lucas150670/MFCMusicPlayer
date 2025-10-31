@@ -62,6 +62,8 @@ void CMFCMusicPlayerDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_STATICTIME, m_labelTime);
+	DDX_Control(pDX, IDC_ALBUMART, m_labelAlbumArt);
+	DDX_Control(pDX, IDC_SLIDERPROGRESS, m_sliderProgress);
 }
 
 BEGIN_MESSAGE_MAP(CMFCMusicPlayerDlg, CDialogEx)
@@ -76,6 +78,7 @@ BEGIN_MESSAGE_MAP(CMFCMusicPlayerDlg, CDialogEx)
 	ON_MESSAGE(WM_PLAYER_PAUSE, &CMFCMusicPlayerDlg::OnPlayerPause)
 	ON_MESSAGE(WM_PLAYER_STOP, &CMFCMusicPlayerDlg::OnPlayerStop)
 	ON_MESSAGE(WM_PLAYER_TIME_CHANGE, &CMFCMusicPlayerDlg::OnPlayerTimeChange)
+	ON_MESSAGE(WM_PLAYER_ALBUM_ART_INIT, &CMFCMusicPlayerDlg::OnAlbumArtInit)
 	ON_WM_CLOSE()
 END_MESSAGE_MAP()
 
@@ -112,6 +115,7 @@ BOOL CMFCMusicPlayerDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// TODO: 在此添加额外的初始化代码
+	m_sliderProgress.SetRangeMax(1000);
 
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
@@ -192,6 +196,18 @@ void CMFCMusicPlayerDlg::OnClickedButtonOpen()
 			return;
 		}
 		AfxMessageBox(_T("加载成功！"), MB_ICONINFORMATION);
+
+		CString title = music_player->GetSongTitle();
+		CString artist = music_player->GetSongArtist();
+		this->PostMessage(WM_PLAYER_TIME_CHANGE, 0);
+		if (title.IsEmpty() || artist.IsEmpty()) {
+			this->SetWindowText(file);
+		}
+		else {
+			CString windowTitle;
+			windowTitle.Format(_T("%s - %s"), artist.GetString(), title.GetString());
+			this->SetWindowText(windowTitle);
+		}
 	}
 }
 
@@ -232,12 +248,35 @@ LRESULT CMFCMusicPlayerDlg::OnPlayerStop(WPARAM wParam, LPARAM lParam)
 	return LRESULT();
 }
 
+LRESULT CMFCMusicPlayerDlg::OnAlbumArtInit(WPARAM wParam, LPARAM lParam)
+{
+	HBITMAP album_art = reinterpret_cast<HBITMAP>(wParam);
+	if (album_art) {
+		m_labelAlbumArt.SetBitmap(album_art);
+	}
+	else {
+		HBITMAP no_image = ::LoadBitmap(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDB_NOIMAGE));
+		m_labelAlbumArt.SetBitmap(no_image);
+	}
+	return HRESULT();
+}
+
 LRESULT CMFCMusicPlayerDlg::OnPlayerTimeChange(WPARAM wParam, LPARAM lParam) 
 {
-	double time = *reinterpret_cast<double*>(wParam);
+	static CString prev_timeStr = _T("");
+	UINT32 raw = static_cast<UINT32>(wParam);
+	float time = *reinterpret_cast<float*>(&raw);
+	float length = music_player->GetMusicTimeLength();
 	CString timeStr;
-	timeStr.Format(_T("%lf"), time);
-	m_labelTime.SetWindowText(timeStr);
+	int min = int(time) / 60, sec = int(time) % 60;
+	timeStr.Format(_T("%02d:%02d / %02d:%02d"), min, sec, int(length) / 60, int(length) % 60);
+	if (timeStr.Compare(prev_timeStr) != 0) {
+		m_labelTime.SetWindowText(timeStr);
+		prev_timeStr = timeStr;
+	}
+	// set slider
+	float ratio = time / length;
+	m_sliderProgress.SetPos(static_cast<int>(ratio * 1000));
 	return LRESULT();
 }
 

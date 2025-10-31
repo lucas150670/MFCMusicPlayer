@@ -212,6 +212,7 @@
     <None Include="res\MFCMusicPlayer.rc2" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="res\bitmap1.bmp" />
     <Image Include="res\MFCMusicPlayer.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

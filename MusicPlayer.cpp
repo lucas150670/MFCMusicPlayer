@@ -69,10 +69,7 @@ int MusicPlayer::load_audio_context_stream(CFile* file_stream)
 
 	// 取得文件大小
 	format_context = avformat_alloc_context();
-	auto pos = file_stream->GetPosition();
-	file_stream->SeekToEnd();
-	size_t file_len = file_stream->GetPosition() - pos;
-	file_stream->Seek(pos, CFile::begin);
+	size_t file_len = static_cast<int64_t>(file_stream->GetLength());
 	ATLTRACE("info: file loaded, size = %zu\n", file_len);
 
 	constexpr size_t avio_buf_size = 8192;
@@ -154,9 +151,11 @@ int MusicPlayer::load_audio_context_stream(CFile* file_stream)
 	}
 
 	if (image_stream_id != -1) {
-		decode_id3_album_art(image_stream_id);
+		album_art = decode_id3_album_art(image_stream_id);
 	}
 
+	AfxGetMainWnd()->PostMessage(WM_PLAYER_ALBUM_ART_INIT, reinterpret_cast<WPARAM>(album_art));
+	read_metadata();
 
 	// 从0ms开始读取
 	avformat_seek_file(format_context, -1, INT64_MIN, 0, INT64_MAX, 0);
@@ -230,75 +229,151 @@ bool MusicPlayer::is_audio_context_initialized()
 
 HBITMAP MusicPlayer::decode_id3_album_art(const int stream_index)
 {
-	// 拿到id3流编码
-	AVPacket pkt = format_context->streams[stream_index]->attached_pic;
+	if (!format_context) return nullptr;
 
-	// 走标准ffmpeg解码
+	// stream_index = attached pic
+	AVPacket pkt = format_context->streams[stream_index]->attached_pic;
 	AVCodecParameters* codecpar = format_context->streams[stream_index]->codecpar;
 	const AVCodec* codec = avcodec_find_decoder(codecpar->codec_id);
+	if (!codec) return nullptr;
+
 	AVCodecContext* codec_ctx = avcodec_alloc_context3(codec);
-	avcodec_parameters_to_context(codec_ctx, codecpar);
-	avcodec_open2(codec_ctx, codec, nullptr);
-	avcodec_send_packet(codec_ctx, &pkt);
+	if (!codec_ctx) return nullptr;
+
+	// 
+	if (avcodec_parameters_to_context(codec_ctx, codecpar) < 0) {
+		avcodec_free_context(&codec_ctx);
+		return nullptr;
+	}
+	if (avcodec_open2(codec_ctx, codec, nullptr) < 0) {
+		avcodec_free_context(&codec_ctx);
+		return nullptr;
+	}
+	// decode pipeline
+	if (avcodec_send_packet(codec_ctx, &pkt) < 0) {
+		avcodec_free_context(&codec_ctx);
+		return nullptr;
+	}
 	AVFrame* frame = av_frame_alloc();
-	avcodec_receive_frame(codec_ctx, frame);
-	// 转换为rgb24位图格式
+	if (!frame) {
+		avcodec_free_context(&codec_ctx);
+		return nullptr;
+	}
+	int ret = avcodec_receive_frame(codec_ctx, frame);
+	if (ret < 0) {
+		av_frame_free(&frame);
+		avcodec_free_context(&codec_ctx);
+		return nullptr;
+	}
+	// bgr24 format
 	SwsContext* sws_ctx = sws_getContext(
 		frame->width, frame->height, (AVPixelFormat)frame->format,
-		frame->width, frame->height, AV_PIX_FMT_RGB24,
+		128, 128, AV_PIX_FMT_BGR24, // for display
 		SWS_BILINEAR, nullptr, nullptr, nullptr
 	);
+	if (!sws_ctx) {
+		av_frame_free(&frame);
+		avcodec_free_context(&codec_ctx);
+		return nullptr;
+	}
 	AVFrame* rgb_frame = av_frame_alloc();
-	int num_bytes = av_image_get_buffer_size(AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
+	if (!rgb_frame) {
+		sws_freeContext(sws_ctx);
+		av_frame_free(&frame);
+		avcodec_free_context(&codec_ctx);
+		return nullptr;
+	}
+	int num_bytes = av_image_get_buffer_size(AV_PIX_FMT_BGR24, 128, 128, 1);
 	uint8_t* buffer = (uint8_t*)av_malloc(num_bytes);
-	av_image_fill_arrays(rgb_frame->data, rgb_frame->linesize, buffer, AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
+	if (!buffer) {
+		av_frame_free(&rgb_frame);
+		sws_freeContext(sws_ctx);
+		av_frame_free(&frame);
+		avcodec_free_context(&codec_ctx);
+		return nullptr;
+	}
+	rgb_frame->width = rgb_frame->height = 128;
+	memcpy(rgb_frame->linesize, frame->linesize, sizeof(frame->linesize));
+	av_image_fill_arrays(rgb_frame->data, rgb_frame->linesize, buffer, AV_PIX_FMT_BGR24, 128, 128, 1);
 	sws_scale(sws_ctx, frame->data, frame->linesize, 0, frame->height, rgb_frame->data, rgb_frame->linesize);
-	// 填充bmp结构
-	BITMAPINFO bmi = { 0 };
+
+	// negative avoid flip
+	BITMAPINFO bmi = {};
 	bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
 	bmi.bmiHeader.biWidth = rgb_frame->width;
-	bmi.bmiHeader.biHeight = -rgb_frame->height; // 不加负号会上下翻转
+	bmi.bmiHeader.biHeight = -static_cast<LONG>(rgb_frame->height); // top-down
 	bmi.bmiHeader.biPlanes = 1;
-	bmi.bmiHeader.biBitCount = 24; // r8g8b8
+	bmi.bmiHeader.biBitCount = 24;
 	bmi.bmiHeader.biCompression = BI_RGB;
-	// 写位图
+
+	// copy
 	void* bits = nullptr;
 	HDC hdc = GetDC(nullptr);
 	HBITMAP bitmap = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, &bits, nullptr, 0);
 	ReleaseDC(nullptr, hdc);
+
+	if (!bitmap || !bits) {
+		if (bitmap) DeleteObject(bitmap);
+		av_free(buffer);
+		av_frame_free(&rgb_frame);
+		sws_freeContext(sws_ctx);
+		av_frame_free(&frame);
+		avcodec_free_context(&codec_ctx);
+		return nullptr;
+	}
+
 	int height = rgb_frame->height;
 	int width = rgb_frame->width;
-	int rowSize = width * 3;// r8g8b8, 3*8=3bytes
+	int rowSize = width * 3; // 24bpp
 	for (int y = 0; y < height; y++) {
-		memcpy(
-			(BYTE*)rgb_frame + y * rowSize,
-			rgb_frame->data[0] + y * rgb_frame->linesize[0],
-			rowSize
-		);
+		memcpy(reinterpret_cast<BYTE*>(bits) + y * rowSize, rgb_frame->data[0] + y * rgb_frame->linesize[0], rowSize);
 	}
-	// 释放资源
-	if (buffer) {
-		av_free(reinterpret_cast<void*>(buffer));
-		buffer = nullptr;
-	}
-	if (rgb_frame) {
-		av_frame_free(&rgb_frame);
-		frame = nullptr;
-	}
-	if (sws_ctx) {
-		sws_freeContext(sws_ctx);
-		sws_ctx = nullptr;
-	}
-	if (frame) {
-		av_frame_free(&frame);
-		frame = nullptr;
-	}
-	// pkt not modified by caller
-	// av_packet_unref(&pkt);
-	if (codec_ctx) {
-		avcodec_free_context(&codec_ctx);
-	}
+
+	av_free(buffer);
+	av_frame_free(&rgb_frame);
+	sws_freeContext(sws_ctx);
+	av_frame_free(&frame);
+	avcodec_free_context(&codec_ctx);
+
 	return bitmap;
+}
+
+void MusicPlayer::read_metadata()
+{
+	auto read_metadata_iter = [&](AVDictionaryEntry* tag, CString& title, CString& artist) {
+		ATLTRACE("%s = %s\n", tag->key, tag->value);
+		CString key = CString(tag->key).MakeLower();
+		CString value = CString(tag->value);
+		if (key == "title") {
+			int len = MultiByteToWideChar(CP_UTF8, 0, tag->value, -1, nullptr, 0);
+			std::wstring wtitle(len, L'\0');
+			MultiByteToWideChar(CP_UTF8, 0, tag->value, -1, &wtitle[0], len);
+			song_title = wtitle.c_str();
+			ATLTRACE("info: song title: %s\n", song_title);
+		}
+		else if (key == "artist") {
+			song_artist = value;
+			int len = MultiByteToWideChar(CP_UTF8, 0, tag->value, -1, nullptr, 0);
+			std::wstring wtitle(len, L'\0');
+			MultiByteToWideChar(CP_UTF8, 0, tag->value, -1, &wtitle[0], len);
+			song_artist = wtitle.c_str();
+			ATLTRACE("info: song artist: %s\n", song_artist);
+		}
+	};
+
+	AVDictionaryEntry* tag = nullptr;
+	while ((tag = av_dict_get(format_context->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
+		read_metadata_iter(tag, song_title, song_artist);
+	}
+
+	// decode album title & artist
+	for (unsigned int i = 0; i < format_context->nb_streams; i++) {
+		AVStream* stream = format_context->streams[i];
+		tag = nullptr;
+		while ((tag = av_dict_get(stream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
+			read_metadata_iter(tag, song_title, song_artist);
+		}
+	}
 }
 
 // playback area
@@ -441,16 +516,10 @@ void MusicPlayer::audio_playback_worker_thread()
 			audio_playback_state_stopped)
 		{
 			if (user_request_stop == true) {
-				// 清理FFmpeg上下文
+				// immediate return
 				ATLTRACE("info: user request stop, do cleaning\n");
-				avcodec_flush_buffers(codec_context);
-				avcodec_free_context(&codec_context);
-				avformat_close_input(&format_context);
 
 				base_offset = state.SamplesPlayed;
-				source_voice->Stop(0);
-				source_voice->FlushSourceBuffers();
-				is_playing = false;
 				LeaveCriticalSection(audio_playback_section);
 				break;
 			}
@@ -459,6 +528,14 @@ void MusicPlayer::audio_playback_worker_thread()
 				ATLTRACE("info: file stream ended, waiting for xaudio2 flush buffer\n");
 				spinWaitResult = WaitForSingleObject(doneEvent, 1);
 				if (spinWaitResult == WAIT_TIMEOUT) {
+					source_voice->GetState(&state);
+					elapsed_time = (state.SamplesPlayed - base_offset) * 1.0 / wfx.nSamplesPerSec + pts_seconds;
+					ATLTRACE("info: samples played=%lld, elapsed time=%lf\n",
+							state.SamplesPlayed, elapsed_time);
+
+					UINT32 raw = *reinterpret_cast<UINT32*>(&elapsed_time);
+					WPARAM w = static_cast<WPARAM>(raw);
+					AfxGetMainWnd()->PostMessage(WM_PLAYER_TIME_CHANGE, (WPARAM)raw);
 					continue;
 				}
 			}
@@ -468,6 +545,10 @@ void MusicPlayer::audio_playback_worker_thread()
 				AfxGetMainWnd()->PostMessage(WM_PLAYER_STOP);
 				base_offset = state.SamplesPlayed;
 				is_playing = false;
+				elapsed_time = 0.0;
+				UINT32 raw = *reinterpret_cast<UINT32*>(&elapsed_time);
+				WPARAM w = static_cast<WPARAM>(raw);
+				AfxGetMainWnd()->PostMessage(WM_PLAYER_TIME_CHANGE, (WPARAM)raw);
 				LeaveCriticalSection(audio_playback_section);
 				break; // 读取结束
 			}
@@ -500,7 +581,7 @@ void MusicPlayer::audio_playback_worker_thread()
 				// 	this->pts_seconds =
 				// 		frame->pts * av_q2d(format_context->streams[audio_stream_index]->time_base); // recorded by FFmpeg
 					// AfxGetMainWnd()->PostMessage(WM_PLAYER_TIME_CHANGE, reinterpret_cast<WPARAM>(&this->pts_seconds));
-			    // }
+				// }
 				if (res == AVERROR(EAGAIN) || res == AVERROR_EOF) {
 					break; // 没有更多帧
 				}
@@ -587,11 +668,13 @@ void MusicPlayer::audio_playback_worker_thread()
 							xaudio2_playing_buffers.begin(), it);
 						xaudio2_playing_buffers.erase(xaudio2_playing_buffers.begin(), it);
 						xaudio2_played_buffers = played_buffers - 1;
-						xaudio2_played_samples = samples_sum - (*it)->AudioBytes / 4;
+						xaudio2_played_samples = samples_sum - (*it)->AudioBytes / wfx.nBlockAlign;
 						ATLTRACE("info: samples played=%lld, cur played_buffers=%lld, cur samples=%lld, xaudio2 buffer arr size=%lld\n",
 							state.SamplesPlayed, played_buffers, samples_sum, xaudio2_playing_buffers.size());
 						elapsed_time = (xaudio2_played_samples - base_offset) * 1.0 / wfx.nSamplesPerSec + this->pts_seconds;
-						AfxGetMainWnd()->PostMessage(WM_PLAYER_TIME_CHANGE, reinterpret_cast<WPARAM>(&elapsed_time));
+						UINT32 raw = *reinterpret_cast<UINT32*>(&elapsed_time);
+						WPARAM w = static_cast<WPARAM>(raw);
+						AfxGetMainWnd()->PostMessage(WM_PLAYER_TIME_CHANGE, w);
 						// std::printf("info: buffer played=%zd\n", played_buffers);
 					}
 					// else
@@ -640,6 +723,12 @@ void MusicPlayer::stop_audio_playback(int mode)
 		// EnterCriticalSection(audio_playback_section); <- this cause delay, spin wait instead
 		user_request_stop = true;
 		InterlockedExchange(playback_state, audio_playback_state_stopped);
+		avcodec_flush_buffers(codec_context);
+		avcodec_free_context(&codec_context);
+		avformat_close_input(&format_context);
+		source_voice->Stop(0);
+		source_voice->FlushSourceBuffers();
+		is_playing = false;
 		LeaveCriticalSection(audio_playback_section);
 		// wait for thread to terminate
 		WaitForSingleObject(audio_player_worker_thread->m_hThread, INFINITE);
@@ -774,6 +863,36 @@ void MusicPlayer::OpenFile(CString fileName, CString file_extension)
 		AfxMessageBox(_T("err: audio engine initialize failed!"), MB_ICONERROR);
 		return;
 	};
+}
+
+float MusicPlayer::GetMusicTimeLength()
+{
+	if (IsInitialized()) {
+		if (fabs(length - 0.0f) < 0.0001f) {
+			AVStream* audio_stream = format_context->streams[audio_stream_index];
+			int64_t duration = audio_stream->duration;
+			AVRational time_base = audio_stream->time_base;
+			length = duration * av_q2d(time_base);
+		}
+		return length;
+	}
+	return 0.0f;
+}
+
+CString MusicPlayer::GetSongTitle()
+{
+	if (IsInitialized()) {
+		return song_title;
+	}
+	return CString();
+}
+
+CString MusicPlayer::GetSongArtist()
+{
+	if (IsInitialized()) {
+		return song_artist;
+	}
+	return CString();
 }
 
 void MusicPlayer::Start()

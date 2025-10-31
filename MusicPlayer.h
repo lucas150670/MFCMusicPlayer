@@ -24,10 +24,13 @@ class MusicPlayer
 	bool file_stream_end = false;
 	bool user_request_stop = false;
 	double pts_seconds = 0.0;
-	double elapsed_time = 0.0;
+	float elapsed_time = 0.0;
+	float length = 0.0f;
 	bool is_pause = false;
 	bool is_playing = false;
 	HBITMAP album_art = nullptr;
+	CString song_title = {};
+	CString song_artist = {};
 
 	CRITICAL_SECTION* audio_playback_section;
 
@@ -59,6 +62,7 @@ class MusicPlayer
 	void reset_audio_context();
 	bool is_audio_context_initialized();
 	HBITMAP decode_id3_album_art(const int stream_index);
+	void read_metadata();
 
 	// playback area
 	int initialize_audio_engine();
@@ -89,6 +93,9 @@ public:
 	bool IsInitialized();
 	bool IsPlaying();
 	void OpenFile(CString fileName, CString file_extension = CString());
+	float GetMusicTimeLength();
+	CString GetSongTitle();
+	CString GetSongArtist();
 	void Start();
 	void Pause();
 	void Stop();
