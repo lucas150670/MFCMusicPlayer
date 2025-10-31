@@ -6,6 +6,7 @@
 #define IDD_ABOUTBOX                    100
 #define IDS_ABOUTBOX                    101
 #define IDD_MFCMUSICPLAYER_DIALOG       102
+#define IDS_CREDIT                      102
 #define IDR_MAINFRAME                   128
 #define IDC_BUTTONOPEN                  1000
 #define IDB_NOIMAGE                     1000

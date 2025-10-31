@@ -22,12 +22,9 @@ int MusicPlayer::read_func_wrapper(void* opaque, uint8_t* buf, int buf_size)
 
 int64_t MusicPlayer::seek_func(int64_t offset, int whence)
 {
-	if (whence == AVSEEK_SIZE) {
-		return static_cast<int64_t>(file_stream->GetLength());
-	}
-
 	UINT origin;
 	switch (whence) {
+	case AVSEEK_SIZE: return static_cast<int64_t>(file_stream->GetLength());
 	case SEEK_SET: origin = CFile::begin; break;
 	case SEEK_CUR: origin = CFile::current; break;
 	case SEEK_END: origin = CFile::end; break;
