@@ -337,24 +337,23 @@ HBITMAP MusicPlayer::decode_id3_album_art(const int stream_index)
 
 void MusicPlayer::read_metadata()
 {
+	auto convert_utf8 = [](const char* utf_8_str) {
+		int len = MultiByteToWideChar(CP_UTF8, 0, utf_8_str, -1, nullptr, 0);
+		std::wstring wtitle(len, L'\0');
+		MultiByteToWideChar(CP_UTF8, 0, utf_8_str, -1, &wtitle[0], len);
+		return CString(wtitle.c_str());
+	};
 	auto read_metadata_iter = [&](AVDictionaryEntry* tag, CString& title, CString& artist) {
-		ATLTRACE("%s = %s\n", tag->key, tag->value);
-		CString key = CString(tag->key).MakeLower();
-		CString value = CString(tag->value);
-		if (key == "title") {
-			int len = MultiByteToWideChar(CP_UTF8, 0, tag->value, -1, nullptr, 0);
-			std::wstring wtitle(len, L'\0');
-			MultiByteToWideChar(CP_UTF8, 0, tag->value, -1, &wtitle[0], len);
-			song_title = wtitle.c_str();
-			ATLTRACE("info: song title: %s\n", song_title);
+		CString key = convert_utf8(tag->key);
+		CString value = convert_utf8(tag->value);
+		ATLTRACE(_T("info: key %s = %s\n"), key.GetString(), value.GetString());
+		if (!key.CompareNoCase(_T("title")) && song_title.IsEmpty()) {
+			song_title = value;
+			ATLTRACE(_T("info: song title: %s\n"), song_title.GetString());
 		}
-		else if (key == "artist") {
+		else if (!key.CompareNoCase(_T("artist")) && song_artist.IsEmpty()) {
 			song_artist = value;
-			int len = MultiByteToWideChar(CP_UTF8, 0, tag->value, -1, nullptr, 0);
-			std::wstring wtitle(len, L'\0');
-			MultiByteToWideChar(CP_UTF8, 0, tag->value, -1, &wtitle[0], len);
-			song_artist = wtitle.c_str();
-			ATLTRACE("info: song artist: %s\n", song_artist);
+			ATLTRACE(_T("info: song artist: %s\n"), song_artist.GetString());
 		}
 	};
 
