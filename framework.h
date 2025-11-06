@@ -37,7 +37,9 @@ extern "C" {
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
 #include <libavutil/opt.h>
+#include <libavutil/audio_fifo.h>
 #include <libavutil/imgutils.h>
+#include <libavutil/mem.h>
 #include <libswresample/swresample.h>
 #include <libswscale/swscale.h>
 #if defined(_WIN32) || defined(WIN32) || defined(__cplusplus)
@@ -57,18 +59,24 @@ extern "C" {
 #else
 #define DBG_NEW new
 #endif
+#include <avrt.h>
 #include <crtdbg.h>
 #include <synchapi.h>
 #include <ShellScalingAPI.h>
 
 // Standard C++ Header Files
 #include <cstdlib>
+#include <cassert>
 #include <list>
 #include <functional>
 #include <string>
 
 // XAudio2 Header
+#include <comdef.h>
 #include <xaudio2.h>
+#include <mmdeviceapi.h>
+#include <audioclient.h>
+#include <functiondiscoverykeys_devpkey.h>
 
 // Modern Appearance
 #ifdef _UNICODE

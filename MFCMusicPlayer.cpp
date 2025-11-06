@@ -113,6 +113,10 @@ BOOL CMFCMusicPlayerApp::InitInstance()
 	//  而不是启动应用程序的消息泵。
 
 	CoUninitialize();
+
+	// check mem leak
+	_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG);
+	_CrtDumpMemoryLeaks();
 	return FALSE;
 }
 

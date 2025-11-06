@@ -73,6 +73,7 @@ BEGIN_MESSAGE_MAP(CMFCMusicPlayerDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTONOPEN, &CMFCMusicPlayerDlg::OnClickedButtonOpen)
 	ON_BN_CLICKED(IDC_BUTTONPLAY, &CMFCMusicPlayerDlg::OnClickedButtonPlay)
 	ON_BN_CLICKED(IDC_BUTTONSTOP, &CMFCMusicPlayerDlg::OnClickedButtonStop)
+	ON_BN_CLICKED(IDC_BUTTONPAUSE, &CMFCMusicPlayerDlg::OnClickedButtonPause)
 	ON_MESSAGE(WM_PLAYER_FILE_INIT, &CMFCMusicPlayerDlg::OnPlayerFileInit)
 	ON_MESSAGE(WM_PLAYER_TIME_CHANGE, &CMFCMusicPlayerDlg::OnPlayerTimeChange)
 	ON_MESSAGE(WM_PLAYER_PAUSE, &CMFCMusicPlayerDlg::OnPlayerPause)
@@ -193,9 +194,10 @@ void CMFCMusicPlayerDlg::OnClickedButtonOpen()
 		music_player->OpenFile(path, ext);
 		if (!music_player->IsInitialized()) {
 			delete music_player;
+			music_player = nullptr;
 			return;
 		}
-		AfxMessageBox(_T("加载成功！"), MB_ICONINFORMATION);
+		// AfxMessageBox(_T("加载成功！"), MB_ICONINFORMATION);
 
 		CString title = music_player->GetSongTitle();
 		CString artist = music_player->GetSongArtist();
@@ -222,6 +224,9 @@ void CMFCMusicPlayerDlg::OnClickedButtonPlay()
 void CMFCMusicPlayerDlg::OnClickedButtonPause()
 {
 	// TODO: 在此添加控件通知处理程序代码
+	if (music_player) {
+		music_player->Pause();
+	}
 }
 
 void CMFCMusicPlayerDlg::OnClickedButtonStop()
