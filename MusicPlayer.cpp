@@ -1229,7 +1229,7 @@ void MusicPlayer::dialog_ffmpeg_critical_error(int err_code, const char* file, i
 	av_strerror(err_code, buf, 1024);
 	CString message = _T("FFmpeg critical error: ");
 	CString res{};
-	res.Format(_T("%s (file: %s, line: %d)\n"), CA2W(buf), CA2W(file), line);
+	res.Format(_T("%s (file: %s, line: %d)\n"), CString(buf).GetString(), CString(file).GetString(), line);
 	message += res;
 	message += stack_unwind();
 	AfxMessageBox(message, MB_ICONERROR);
@@ -1261,7 +1261,7 @@ CString MusicPlayer::stack_unwind()
 			line.SizeOfStruct = sizeof(line);
 
 			if (SymGetLineFromAddr64(process, (DWORD64)frames[i], &dwDisplacement, &line)) {
-				trace.AppendFormat(_T(" (%s: %d)"), CString(line.FileName), line.LineNumber);
+				trace.AppendFormat(_T(" (%s: %d)"), CString(line.FileName).GetString(), line.LineNumber);
 			}
 			trace.Append(_T("\n"));
 		}
