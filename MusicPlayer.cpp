@@ -1019,16 +1019,17 @@ void MusicPlayer::stop_audio_playback(int mode)
 	xaudio2_free_buffer();
 	xaudio2_destroy_buffer();
 	xaudio2_played_samples = xaudio2_played_buffers = xaudio2_played_samples = xaudio2_played_buffers = 0;
+	float pts_time_f = 0.0f;
 	if (is_pause)
 	{
-		float pts_time_f = static_cast<float>(pts_seconds);
-		UINT32 raw = *reinterpret_cast<UINT32*>(&pts_time_f);
-		WPARAM w = static_cast<WPARAM>(raw);
-		AfxGetMainWnd()->PostMessage(WM_PLAYER_TIME_CHANGE, w);
+		pts_time_f = static_cast<float>(pts_seconds);
 	}
 	else {
-		elapsed_time = 0.0f;
+		elapsed_time = pts_time_f = 0.0f;
 	}
+	UINT32 raw = *reinterpret_cast<UINT32*>(&pts_time_f);
+	WPARAM w = static_cast<WPARAM>(raw);
+	AfxGetMainWnd()->PostMessage(WM_PLAYER_TIME_CHANGE, w);
 	ResetEvent(frame_underrun_event);
 	ResetEvent(frame_ready_event);
 	if (mode == 0)

@@ -17,6 +17,7 @@ add_executable(MFCMusicPlayer WIN32
     MusicPlayer.cpp
     pch.cpp
     MFCMusicPlayer.rc
+    res/MFCMusicPlayer.rc2
 )
 
 target_include_directories(MFCMusicPlayer
