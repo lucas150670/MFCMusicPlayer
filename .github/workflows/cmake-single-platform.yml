@@ -22,7 +22,8 @@ jobs:
       uses: lukka/run-vcpkg@v7.6
       with:
         vcpkgArguments: 'ffmpeg'
-        vcpkgTriplet: ${{ env.VCPKG_DEFAULT_TRIPLET }}
+        vcpkgTriplet: ${{ env.VCPKG_DEFAULT_TRIPLET }} 
+        vcpkgGitCommitId: '2024.09.16' 
 
     - name: Configure CMake
       run: >
