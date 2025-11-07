@@ -648,7 +648,7 @@ void MusicPlayer::audio_playback_worker_thread()
 		fifo_buf = (uint8_t**)av_calloc(channels, sizeof(uint8_t*));
 		int alloc_ret = 0;
 		if ((alloc_ret = av_samples_alloc(fifo_buf, NULL, channels, xaudio2_play_frame_size, codec_context->sample_fmt, 0)) < 0) {
-			dialog_ffmpeg_critical_error(alloc_ret);
+			dialog_ffmpeg_critical_error(alloc_ret, __FILE__, __LINE__);
 			LeaveCriticalSection(audio_fifo_section);
 			LeaveCriticalSection(audio_playback_section);
 			InterlockedExchange(playback_state, audio_playback_state_stopped);
@@ -656,7 +656,7 @@ void MusicPlayer::audio_playback_worker_thread()
 		}
 		int ret = read_samples_from_fifo(fifo_buf, xaudio2_play_frame_size);
 		if (ret < 0) {
-			dialog_ffmpeg_critical_error(ret);
+			dialog_ffmpeg_critical_error(ret, __FILE__, __LINE__);
 			av_freep(&fifo_buf[0]);
 			av_free(fifo_buf);
 			LeaveCriticalSection(audio_fifo_section);
@@ -669,7 +669,7 @@ void MusicPlayer::audio_playback_worker_thread()
 		av_free(fifo_buf);
 		LeaveCriticalSection(audio_fifo_section);
 		if (out_samples < 0) {
-			dialog_ffmpeg_critical_error(out_samples);
+			dialog_ffmpeg_critical_error(out_samples, __FILE__, __LINE__);
 			LeaveCriticalSection(audio_playback_section);
 			break;
 		}
@@ -853,7 +853,7 @@ void MusicPlayer::audio_decode_worker_thread()
 		}
 		int ret = avcodec_send_packet(codec_context, packet);
 		if (ret < 0) {
-			dialog_ffmpeg_critical_error(ret);
+			dialog_ffmpeg_critical_error(ret, __FILE__, __LINE__);
 			InterlockedExchange(playback_state, audio_playback_state_stopped);
 			av_packet_unref(packet);
 			break;
@@ -864,14 +864,14 @@ void MusicPlayer::audio_decode_worker_thread()
 				break; // 没有更多帧
 			}
 			else if (res < 0) {
-				dialog_ffmpeg_critical_error(res);
+				dialog_ffmpeg_critical_error(res, __FILE__, __LINE__);
 				InterlockedExchange(playback_state, audio_playback_state_stopped);
 				break;
 			}
 			while (!TryEnterCriticalSection(audio_fifo_section)) {}
 			int ret_code = 0;
 			if ((ret_code = add_samples_to_fifo(frame->extended_data, frame->nb_samples)) < 0) {
-				dialog_ffmpeg_critical_error(ret_code);
+				dialog_ffmpeg_critical_error(ret_code, __FILE__, __LINE__);
 				InterlockedExchange(playback_state, audio_playback_state_stopped);
 				LeaveCriticalSection(audio_fifo_section);
 				break;
@@ -1059,7 +1059,7 @@ int MusicPlayer::resize_audio_fifo(int nb_samples)
 	if (!audio_fifo)
 		return -1;
 	if ((ret_value = av_audio_fifo_realloc(audio_fifo, nb_samples)) < 0) {
-		dialog_ffmpeg_critical_error(ret_value);
+		dialog_ffmpeg_critical_error(ret_value, __FILE__, __LINE__);
 		return ret_value;
 	}
 	return 0;
@@ -1072,7 +1072,7 @@ int MusicPlayer::add_samples_to_fifo(uint8_t** decoded_data, int nb_samples)
 	int res = av_audio_fifo_write(audio_fifo, reinterpret_cast<void**>(decoded_data), nb_samples);
 	if (res < 0) {
 		// audio fifo will resize automatically
-		dialog_ffmpeg_critical_error(res);
+		dialog_ffmpeg_critical_error(res, __FILE__, __LINE__);
 		return res;
 	}
 	// 	ATLTRACE("info: added %d samples to audio fifo\n", res);
@@ -1085,7 +1085,7 @@ int MusicPlayer::read_samples_from_fifo(uint8_t** output_buffer, int nb_samples)
 	if (!audio_fifo)
 		return -1;
 	if ((ret = av_audio_fifo_read(audio_fifo, reinterpret_cast<void**>(output_buffer), nb_samples)) < 0) {
-		dialog_ffmpeg_critical_error(ret);
+		dialog_ffmpeg_critical_error(ret, __FILE__, __LINE__);
 		return -1;
 	}
 	return ret;
@@ -1097,7 +1097,7 @@ void MusicPlayer::drain_audio_fifo(int nb_samples)
 		return;
 	int ret;
 	if ((ret = av_audio_fifo_drain(audio_fifo, nb_samples)) < 0) {
-		dialog_ffmpeg_critical_error(ret);
+		dialog_ffmpeg_critical_error(ret, __FILE__, __LINE__);
 	}
 }
 
@@ -1223,12 +1223,14 @@ size_t MusicPlayer::get_samples_played_per_session()
 	return state.SamplesPlayed - base_offset;
 }
 
-void MusicPlayer::dialog_ffmpeg_critical_error(int err_code)
+void MusicPlayer::dialog_ffmpeg_critical_error(int err_code, const char* file, int line)
 {
 	char buf[1024] = { 0 };
 	av_strerror(err_code, buf, 1024);
 	CString message = _T("FFmpeg critical error: ");
-	message += CString(buf);
+	CString res{};
+	res.Format(_T("%s (file: %s, line: %d)"), buf, file, line);
+	message += res;
 	AfxMessageBox(message, MB_ICONERROR);
 }
 
