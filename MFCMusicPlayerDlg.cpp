@@ -64,6 +64,7 @@ void CMFCMusicPlayerDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_STATICTIME, m_labelTime);
 	DDX_Control(pDX, IDC_ALBUMART, m_labelAlbumArt);
 	DDX_Control(pDX, IDC_SLIDERPROGRESS, m_sliderProgress);
+	DDX_Control(pDX, IDC_SLIDERVOLUMECTRL, m_sliderVolumeCtrl);
 }
 
 BEGIN_MESSAGE_MAP(CMFCMusicPlayerDlg, CDialogEx)
@@ -81,6 +82,7 @@ BEGIN_MESSAGE_MAP(CMFCMusicPlayerDlg, CDialogEx)
 	ON_MESSAGE(WM_PLAYER_TIME_CHANGE, &CMFCMusicPlayerDlg::OnPlayerTimeChange)
 	ON_MESSAGE(WM_PLAYER_ALBUM_ART_INIT, &CMFCMusicPlayerDlg::OnAlbumArtInit)
 	ON_WM_CLOSE()
+	ON_WM_HSCROLL()
 END_MESSAGE_MAP()
 
 
@@ -117,7 +119,8 @@ BOOL CMFCMusicPlayerDlg::OnInitDialog()
 
 	// TODO: 在此添加额外的初始化代码
 	m_sliderProgress.SetRangeMax(1000);
-
+	m_sliderVolumeCtrl.SetRangeMax(100);
+	m_sliderVolumeCtrl.SetPos(100);
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -304,4 +307,16 @@ void CMFCMusicPlayerDlg::OnCancel()
 	// TODO: 在此添加专用代码和/或调用基类
 	DestroyMediaPlayer();
 	CDialogEx::OnCancel();
+}
+void CMFCMusicPlayerDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
+{
+	// TODO: 在此添加消息处理程序代码和/或调用默认值
+	if (GetDlgItem(IDC_SLIDERVOLUMECTRL) == pScrollBar) {
+		// volume change event
+		int iMasterVolume = m_sliderVolumeCtrl.GetPos();
+		if (music_player) {
+			music_player->SetMasterVolume(iMasterVolume / 100.0f);
+		}
+	}
+	CDialogEx::OnHScroll(nSBCode, nPos, pScrollBar);
 }

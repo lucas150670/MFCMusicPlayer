@@ -49,4 +49,6 @@ public:
 	afx_msg void OnClickedButtonStop();
 	CStatic m_labelAlbumArt;
 	CSliderCtrl m_sliderProgress;
+	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
+	CSliderCtrl m_sliderVolumeCtrl;
 };
