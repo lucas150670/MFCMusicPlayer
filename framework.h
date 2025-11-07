@@ -78,6 +78,9 @@ extern "C" {
 #include <audioclient.h>
 #include <functiondiscoverykeys_devpkey.h>
 
+// DbgHelp Header
+#include <dbghelp.h>
+
 // Modern Appearance
 #ifdef _UNICODE
 #if defined _M_IX86

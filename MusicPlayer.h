@@ -107,7 +107,10 @@ class MusicPlayer
 	int decoder_query_xaudio2_buffer_size();
 	bool is_xaudio2_initialized();
 	size_t get_samples_played_per_session();
+
+	// debug function
 	void dialog_ffmpeg_critical_error(int err_code, const char* file, int line);
+	CString stack_unwind();
 
 public:
 	// constructor

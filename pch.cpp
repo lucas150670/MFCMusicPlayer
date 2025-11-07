@@ -20,3 +20,6 @@
 
 // High DPI Patch
 #pragma comment(lib, "Shcore.lib")
+
+// DbgHelp
+#pragma comment(lib, "dbghelp.lib")

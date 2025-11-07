@@ -1229,9 +1229,47 @@ void MusicPlayer::dialog_ffmpeg_critical_error(int err_code, const char* file, i
 	av_strerror(err_code, buf, 1024);
 	CString message = _T("FFmpeg critical error: ");
 	CString res{};
-	res.Format(_T("%s (file: %s, line: %d)"), buf, file, line);
+	res.Format(_T("%s (file: %s, line: %d)\n"), CA2W(buf), CA2W(file), line);
 	message += res;
+	message += stack_unwind();
 	AfxMessageBox(message, MB_ICONERROR);
+}
+
+CString MusicPlayer::stack_unwind()
+{
+	const int maxFrames = 64;
+	void* frames[maxFrames];
+	USHORT captured = RtlCaptureStackBackTrace(0, maxFrames, frames, nullptr);
+
+	HANDLE process = GetCurrentProcess();
+	SymInitialize(process, NULL, TRUE);
+
+	CString trace;
+	for (USHORT i = 0; i < captured; ++i) {
+		DWORD64 displacement = 0;
+		char buffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)] = {0};
+		PSYMBOL_INFO symbol = (PSYMBOL_INFO)buffer;
+		symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+		symbol->MaxNameLen = MAX_SYM_NAME;
+
+		if (SymFromAddr(process, (DWORD64)frames[i], &displacement, symbol)) {
+			trace.Append(CA2W(symbol->Name));
+
+			IMAGEHLP_LINE64 line;
+			DWORD dwDisplacement;
+			memset(&line, 0, sizeof(line));
+			line.SizeOfStruct = sizeof(line);
+
+			if (SymGetLineFromAddr64(process, (DWORD64)frames[i], &dwDisplacement, &line)) {
+				trace.AppendFormat(_T(" (%s: %d)"), CString(line.FileName), line.LineNumber);
+			}
+			trace.Append(_T("\n"));
+		}
+	}
+
+	SymCleanup(process);
+
+	return trace;
 }
 
 MusicPlayer::MusicPlayer() :
