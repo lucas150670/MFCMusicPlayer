@@ -53,7 +53,7 @@ target_link_libraries(MFCMusicPlayer
 
 target_compile_options(MFCMusicPlayer
     PUBLIC
-        /W3
+        /W3 /sdl /Oi
 )
 
 target_link_options(MFCMusicPlayer

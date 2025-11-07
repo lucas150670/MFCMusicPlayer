@@ -1,0 +1,10 @@
+{
+  "configurations": [
+    {
+      "name": "x64-Debug",
+      "generator": "Ninja",
+      "cmakeToolchain": "C:/Users/madoka/.vcpkg-clion/vcpkg/scripts/buildsystems/vcpkg.cmake",
+      "inheritEnvironments": [ "msvc_x64" ]
+    }
+  ]
+}

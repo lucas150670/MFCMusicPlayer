@@ -42,7 +42,7 @@ int64_t MusicPlayer::seek_func_wrapper(void* opaque, int64_t offset, int whence)
 
 inline int MusicPlayer::load_audio_context(CString audio_filename, CString file_extension)
 {
-	// ´ò¿ªÎÄ¼şÁ÷
+	// æ‰“å¼€æ–‡ä»¶æµ
 	// std::ios::sync_with_stdio(false);
 	file_stream = new CFile();
 	if (!file_stream->Open(audio_filename, CFile::modeRead | CFile::shareDenyWrite))
@@ -59,12 +59,12 @@ int MusicPlayer::load_audio_context_stream(CFile* file_stream)
 	if (!file_stream)
 		return -1;
 
-	// ÖØÖÃÎÄ¼şÁ÷Ö¸Õë£¬·ÀÖ¹¶ÁÈ¡ºóÎ´¸´Î»
+	// é‡ç½®æ–‡ä»¶æµæŒ‡é’ˆï¼Œé˜²æ­¢è¯»å–åæœªå¤ä½
 	file_stream->SeekToBegin();
 	char* buf = DBG_NEW char[1024];
 	memset(buf, 0, sizeof(buf));
 
-	// È¡µÃÎÄ¼ş´óĞ¡
+	// å–å¾—æ–‡ä»¶å¤§å°
 	format_context = avformat_alloc_context();
 	size_t file_len = static_cast<int64_t>(file_stream->GetLength());
 	ATLTRACE("info: file loaded, size = %zu\n", file_len);
@@ -82,7 +82,7 @@ int MusicPlayer::load_audio_context_stream(CFile* file_stream)
 
 	format_context->pb = avio_context;
 
-	// ´ò¿ªÒôÆµÎÄ¼ş
+	// æ‰“å¼€éŸ³é¢‘æ–‡ä»¶
 	int res = avformat_open_input(&format_context,
 		nullptr, // dummy parameter, read from memory stream
 		nullptr, // let ffmpeg auto detect format
@@ -154,10 +154,10 @@ int MusicPlayer::load_audio_context_stream(CFile* file_stream)
 	AfxGetMainWnd()->PostMessage(WM_PLAYER_ALBUM_ART_INIT, reinterpret_cast<WPARAM>(album_art));
 	read_metadata();
 
-	// ´Ó0ms¿ªÊ¼¶ÁÈ¡
+	// ä»0mså¼€å§‹è¯»å–
 	avformat_seek_file(format_context, -1, INT64_MIN, 0, INT64_MAX, 0);
 	// codec is not null
-	// ½¨Á¢½âÂëÆ÷ÉÏÏÂÎÄ
+	// å»ºç«‹è§£ç å™¨ä¸Šä¸‹æ–‡
 	codec_context = avcodec_alloc_context3(codec);
 	if (codec_context == nullptr)
 	{
@@ -168,7 +168,7 @@ int MusicPlayer::load_audio_context_stream(CFile* file_stream)
 	}
 	avcodec_parameters_to_context(codec_context, format_context->streams[audio_stream_index]->codecpar);
 
-	// ½âÂëÎÄ¼ş
+	// è§£ç æ–‡ä»¶
 	res = avcodec_open2(codec_context, codec, nullptr);
 	if (res)
 	{
@@ -209,20 +209,20 @@ void MusicPlayer::release_audio_context()
 {
 	if (avio_context)
 	{
-		// ÊÍ·Å»º³åÇøÉÏÏÂÎÄ
+		// é‡Šæ”¾ç¼“å†²åŒºä¸Šä¸‹æ–‡
 		avio_context_free(&avio_context);
 		avio_context = nullptr;
 	}
 	if (format_context)
 	{
-		// ÊÍ·ÅÎÄ¼ş½âÎöÉÏÏÂÎÄ
+		// é‡Šæ”¾æ–‡ä»¶è§£æä¸Šä¸‹æ–‡
 		avformat_close_input(&format_context);
 		format_context = nullptr;
 	}
 
 	if (codec_context)
 	{
-		// ÊÍ·Å½âÂëÆ÷ÉÏÏÂÎÄ
+		// é‡Šæ”¾è§£ç å™¨ä¸Šä¸‹æ–‡
 		avcodec_free_context(&codec_context);
 		codec_context = nullptr;
 	}
@@ -397,14 +397,14 @@ void MusicPlayer::read_metadata()
 // playback area
 inline int MusicPlayer::initialize_audio_engine()
 {
-	// ³õÊ¼»¯swscale
+	// åˆå§‹åŒ–swscale
 	auto stereo_layout = AVChannelLayout(AV_CHANNEL_LAYOUT_STEREO);
 	if (!codec_context)
 		return -1;
 
 	swr_alloc_set_opts2(
 		&swr_ctx,
-		&stereo_layout,              // Êä³öÁ¢ÌåÉù
+		&stereo_layout,              // è¾“å‡ºç«‹ä½“å£°
 		AV_SAMPLE_FMT_S16,
 		44100,
 		&codec_context->ch_layout,
@@ -446,13 +446,13 @@ inline int MusicPlayer::initialize_audio_engine()
 	}
 
 
-	// ´´½¨source voice
-	wfx.wFormatTag = WAVE_FORMAT_PCM;                     // pcm¸ñÊ½
-	wfx.nChannels = 2;                                    // ÒôÆµÍ¨µÀÊı
-	wfx.nSamplesPerSec = 44100;                           // ²ÉÑùÂÊ
-	wfx.wBitsPerSample = 16;  // xaudio2Ö§³Ö16-bit pcm£¬Èç¹û²»·ûºÏ¸ñÊ½µÄÒôÆµ£¬Ê¹ÓÃswscale½øĞĞ×ªÂë
-	wfx.nBlockAlign = (wfx.wBitsPerSample / 8) * wfx.nChannels; // Ñù±¾´óĞ¡£ºÑù±¾´óĞ¡(16-bit)*Í¨µÀÊı
-	wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign; // Ã¿ÃëÖÓ½âÂë¶àÉÙ×Ö½Ú£¬Ñù±¾´óĞ¡*²ÉÑùÂÊ
+	// åˆ›å»ºsource voice
+	wfx.wFormatTag = WAVE_FORMAT_PCM;                     // pcmæ ¼å¼
+	wfx.nChannels = 2;                                    // éŸ³é¢‘é€šé“æ•°
+	wfx.nSamplesPerSec = 44100;                           // é‡‡æ ·ç‡
+	wfx.wBitsPerSample = 16;  // xaudio2æ”¯æŒ16-bit pcmï¼Œå¦‚æœä¸ç¬¦åˆæ ¼å¼çš„éŸ³é¢‘ï¼Œä½¿ç”¨swscaleè¿›è¡Œè½¬ç 
+	wfx.nBlockAlign = (wfx.wBitsPerSample / 8) * wfx.nChannels; // æ ·æœ¬å¤§å°ï¼šæ ·æœ¬å¤§å°(16-bit)*é€šé“æ•°
+	wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign; // æ¯ç§’é’Ÿè§£ç å¤šå°‘å­—èŠ‚ï¼Œæ ·æœ¬å¤§å°*é‡‡æ ·ç‡
 	wfx.cbSize = sizeof(wfx);
 	if (FAILED(xaudio2->CreateSourceVoice(&source_voice, &wfx, XAUDIO2_VOICE_NOPITCH)))
 	{
@@ -469,7 +469,7 @@ inline int MusicPlayer::initialize_audio_engine()
 
 inline void MusicPlayer::uninitialize_audio_engine()
 {
-	// µÈ´ıxaudioÏß³ÌÖ´ĞĞÍê³É
+	// ç­‰å¾…xaudioçº¿ç¨‹æ‰§è¡Œå®Œæˆ
 	if (audio_player_worker_thread
 		&& audio_player_worker_thread->m_hThread != INVALID_HANDLE_VALUE)
 	{
@@ -623,11 +623,11 @@ void MusicPlayer::audio_playback_worker_thread()
 				// LeaveCriticalSection(audio_playback_section);
 				// if (need_clean)
 				// 	reset_audio_context();
-				break; // ¶ÁÈ¡½áÊø
+				break; // è¯»å–ç»“æŸ
 			}
 		}
 
-		// ´´½¨Êä³ö»º³åÇø
+		// åˆ›å»ºè¾“å‡ºç¼“å†²åŒº
 		// get decoded frame from audio fifo
 
 		//out_buffer_size = sizeof(uint8_t) * frame->nb_samples * wfx.nBlockAlign;
@@ -646,15 +646,17 @@ void MusicPlayer::audio_playback_worker_thread()
 		int channels = codec_context->ch_layout.nb_channels;
 		uint8_t** fifo_buf = NULL;
 		fifo_buf = (uint8_t**)av_calloc(channels, sizeof(uint8_t*));
-		if (av_samples_alloc(fifo_buf, NULL, channels, xaudio2_play_frame_size, codec_context->sample_fmt, 0) < 0) {
-			ATLTRACE("err: av_samples_alloc failed\n");
+		int alloc_ret = 0;
+		if ((alloc_ret = av_samples_alloc(fifo_buf, NULL, channels, xaudio2_play_frame_size, codec_context->sample_fmt, 0)) < 0) {
+			dialog_ffmpeg_critical_error(alloc_ret);
 			LeaveCriticalSection(audio_fifo_section);
+			LeaveCriticalSection(audio_playback_section);
 			InterlockedExchange(playback_state, audio_playback_state_stopped);
 			break;
 		}
 		int ret = read_samples_from_fifo(fifo_buf, xaudio2_play_frame_size);
 		if (ret < 0) {
-			ATLTRACE("err: Error reading from FIFO\n");
+			dialog_ffmpeg_critical_error(ret);
 			av_freep(&fifo_buf[0]);
 			av_free(fifo_buf);
 			LeaveCriticalSection(audio_fifo_section);
@@ -667,7 +669,7 @@ void MusicPlayer::audio_playback_worker_thread()
 		av_free(fifo_buf);
 		LeaveCriticalSection(audio_fifo_section);
 		if (out_samples < 0) {
-			ATLTRACE("err: swr_convert failed\n");
+			dialog_ffmpeg_critical_error(out_samples);
 			LeaveCriticalSection(audio_playback_section);
 			break;
 		}
@@ -690,9 +692,9 @@ void MusicPlayer::audio_playback_worker_thread()
 			}
 		}
 
-		// ½«×ª»»ºóµÄÒôÆµÊı¾İÊä³öµ½xaudio2
+		// å°†è½¬æ¢åçš„éŸ³é¢‘æ•°æ®è¾“å‡ºåˆ°xaudio2
 		XAUDIO2_BUFFER* buffer = xaudio2_get_available_buffer(out_samples * wfx.nBlockAlign);
-		buffer->AudioBytes = out_samples * wfx.nBlockAlign; // Ã¿Ñù±¾2×Ö½Ú£¬Ã¿ÉùµÀ2×Ö½Ú
+		buffer->AudioBytes = out_samples * wfx.nBlockAlign; // æ¯æ ·æœ¬2å­—èŠ‚ï¼Œæ¯å£°é“2å­—èŠ‚
 		memcpy(const_cast<BYTE*>(buffer->pAudioData), out_buffer, buffer->AudioBytes);
 
 		hr = source_voice->SubmitSourceBuffer(buffer);
@@ -705,7 +707,7 @@ void MusicPlayer::audio_playback_worker_thread()
 		source_voice->GetState(&state);
 		// std::printf("info: submitted source buffer, buffers queued=%d\n", state.BuffersQueued);
 
-		// ²¥·ÅÒôÆµ
+		// æ’­æ”¾éŸ³é¢‘
 		// source_voice->GetState(&state);
 		// if (*playback_state == audio_playback_state_init)
 		// {
@@ -837,7 +839,7 @@ void MusicPlayer::audio_decode_worker_thread()
 			is_pause = false;
 		}
 
-		// ´ÓÊäÈëÎÄ¼şÖĞ¶ÁÈ¡Êı¾İ²¢½âÂë
+		// ä»è¾“å…¥æ–‡ä»¶ä¸­è¯»å–æ•°æ®å¹¶è§£ç 
 		if (av_read_frame(format_context, packet) < 0) {
 			ATLTRACE("info: av_read_frame reached eof, decoder exiting\n");
 			// InterlockedExchange(playback_state, audio_playback_state_stopped);
@@ -851,7 +853,7 @@ void MusicPlayer::audio_decode_worker_thread()
 		}
 		int ret = avcodec_send_packet(codec_context, packet);
 		if (ret < 0) {
-			ATLTRACE("err: avcodec_send_packet failed\n");
+			dialog_ffmpeg_critical_error(ret);
 			InterlockedExchange(playback_state, audio_playback_state_stopped);
 			av_packet_unref(packet);
 			break;
@@ -859,16 +861,17 @@ void MusicPlayer::audio_decode_worker_thread()
 		while (true) {
 			int res = avcodec_receive_frame(codec_context, frame);
 			if (res == AVERROR(EAGAIN) || res == AVERROR_EOF) {
-				break; // Ã»ÓĞ¸ü¶àÖ¡
+				break; // æ²¡æœ‰æ›´å¤šå¸§
 			}
 			else if (res < 0) {
-				ATLTRACE("err: avcodec_receive_frame failed\n");
+				dialog_ffmpeg_critical_error(res);
 				InterlockedExchange(playback_state, audio_playback_state_stopped);
 				break;
 			}
 			while (!TryEnterCriticalSection(audio_fifo_section)) {}
-			if (add_samples_to_fifo(frame->extended_data, frame->nb_samples) < 0) {
-				ATLTRACE("err: add_samples_to_fifo failed\n");
+			int ret_code = 0;
+			if ((ret_code = add_samples_to_fifo(frame->extended_data, frame->nb_samples)) < 0) {
+				dialog_ffmpeg_critical_error(ret_code);
 				InterlockedExchange(playback_state, audio_playback_state_stopped);
 				LeaveCriticalSection(audio_fifo_section);
 				break;
@@ -1044,7 +1047,7 @@ int MusicPlayer::initialize_audio_fifo(AVSampleFormat sample_fmt, int channels, 
 	audio_fifo = av_audio_fifo_alloc(sample_fmt, channels, nb_samples);
 	if (!audio_fifo)
 	{
-		ATLTRACE("err: could not allocate audio fifo\n");
+		AfxMessageBox(_T("err: could not allocate audio fifo!"), MB_ICONERROR);
 		return -1;
 	}
 	return 0;
@@ -1052,11 +1055,12 @@ int MusicPlayer::initialize_audio_fifo(AVSampleFormat sample_fmt, int channels, 
 
 int MusicPlayer::resize_audio_fifo(int nb_samples)
 {
+	int ret_value;
 	if (!audio_fifo)
 		return -1;
-	if (av_audio_fifo_realloc(audio_fifo, nb_samples) < 0) {
-		ATLTRACE("err: could not reallocate audio fifo\n");
-		return -1;
+	if ((ret_value = av_audio_fifo_realloc(audio_fifo, nb_samples)) < 0) {
+		dialog_ffmpeg_critical_error(ret_value);
+		return ret_value;
 	}
 	return 0;
 }
@@ -1068,8 +1072,8 @@ int MusicPlayer::add_samples_to_fifo(uint8_t** decoded_data, int nb_samples)
 	int res = av_audio_fifo_write(audio_fifo, reinterpret_cast<void**>(decoded_data), nb_samples);
 	if (res < 0) {
 		// audio fifo will resize automatically
-		ATLTRACE("err: could not write data to audio fifo\n");
-		return -1;
+		dialog_ffmpeg_critical_error(res);
+		return res;
 	}
 	// 	ATLTRACE("info: added %d samples to audio fifo\n", res);
 	return 0;
@@ -1081,7 +1085,7 @@ int MusicPlayer::read_samples_from_fifo(uint8_t** output_buffer, int nb_samples)
 	if (!audio_fifo)
 		return -1;
 	if ((ret = av_audio_fifo_read(audio_fifo, reinterpret_cast<void**>(output_buffer), nb_samples)) < 0) {
-		ATLTRACE("err: could not read data from audio fifo\n");
+		dialog_ffmpeg_critical_error(ret);
 		return -1;
 	}
 	return ret;
@@ -1091,7 +1095,10 @@ void MusicPlayer::drain_audio_fifo(int nb_samples)
 {
 	if (!audio_fifo)
 		return;
-	av_audio_fifo_drain(audio_fifo, nb_samples);
+	int ret;
+	if ((ret = av_audio_fifo_drain(audio_fifo, nb_samples)) < 0) {
+		dialog_ffmpeg_critical_error(ret);
+	}
 }
 
 void MusicPlayer::reset_audio_fifo()
@@ -1214,6 +1221,15 @@ size_t MusicPlayer::get_samples_played_per_session()
 	XAUDIO2_VOICE_STATE state;
 	source_voice->GetState(&state);
 	return state.SamplesPlayed - base_offset;
+}
+
+void MusicPlayer::dialog_ffmpeg_critical_error(int err_code)
+{
+	char buf[1024] = { 0 };
+	av_strerror(err_code, buf, 1024);
+	CString message = _T("FFmpeg critical error: ");
+	message += CString(buf);
+	AfxMessageBox(message, MB_ICONERROR);
 }
 
 MusicPlayer::MusicPlayer() :
