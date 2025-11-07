@@ -23,7 +23,7 @@ jobs:
       with:
         vcpkgArguments: 'ffmpeg'
         vcpkgTriplet: ${{ env.VCPKG_DEFAULT_TRIPLET }} 
-        vcpkgGitCommitId: '2024.09.16' 
+        vcpkgGitCommitId: '195276f71622bc41392db5c5c5c5141c95ff9a36' 
 
     - name: Configure CMake
       run: >
