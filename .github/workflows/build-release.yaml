@@ -1,0 +1,54 @@
+name: build-release
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  BUILD_TYPE: Release
+  VCPKG_DEFAULT_TRIPLET: x64-windows
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v4
+
+    - name: Setup vcpkg and install FFmpeg
+      uses: lukka/run-vcpkg@v7.6
+      with:
+        vcpkgArguments: 'ffmpeg'
+        vcpkgTriplet: ${{ env.VCPKG_DEFAULT_TRIPLET }} 
+        vcpkgGitCommitId: '195276f71622bc41392db5c5c5c5141c95ff9a36' 
+
+    - name: Configure CMake
+      run: >
+        cmake -B build -S . 
+        -G "Visual Studio 17 2022"
+        -A x64
+        -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake 
+        -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+
+    - name: Build
+      run: cmake --build build --config ${{ env.BUILD_TYPE }}
+
+    - name: Copy FFmpeg DLLs and executable
+      run: | 
+        mkdir package
+        Copy-Item "build\${{ env.BUILD_TYPE }}\*.exe" -Destination package
+        Get-ChildItem "${{ github.workspace }}\vcpkg\installed\${{ env.VCPKG_DEFAULT_TRIPLET }}\bin" -Recurse -Filter *.dll |
+        Copy-Item -Destination package
+
+    - name: Compress package to ZIP
+      run: |
+        powershell -Command "Compress-Archive -Path package\\* -DestinationPath build_output.zip"
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-build-with-ffmpeg
+        path: build_output.zip
