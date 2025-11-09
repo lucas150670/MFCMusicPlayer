@@ -22,12 +22,16 @@ jobs:
       uses: actions/cache@v4
       with:
         path: |
-          ${{ github.workspace }}/vcpkg/installed
-          ${{ github.workspace }}/vcpkg/buildtrees
-          ${{ github.workspace }}/vcpkg/packages
+          ${{ github.workspace }}/vcpkg/
         key: vcpkg-${{ runner.os }}-${{ env.VCPKG_DEFAULT_TRIPLET }}-${{ hashFiles('vcpkg.json') }}
         restore-keys: |
           vcpkg-${{ runner.os }}-${{ env.VCPKG_DEFAULT_TRIPLET }}-
+
+    - name: Clone vcpkg
+      run: |
+         git clone https://github.com/microsoft/vcpkg.git vcpkg
+         cd vcpkg
+         git checkout 195276f71622bc41392db5c5c5c5141c95ff9a36
 
     - name: Setup vcpkg and install FFmpeg
       uses: lukka/run-vcpkg@v7.6
