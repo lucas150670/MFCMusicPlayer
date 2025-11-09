@@ -36,7 +36,7 @@ jobs:
     - name: Setup vcpkg and install FFmpeg
       uses: lukka/run-vcpkg@v7.6
       with:
-        vcpkgArguments: 'ffmpeg'
+        vcpkgArguments: 'ffmpeg[core,mp3lame,vorbis,soxr,zlib]'
         vcpkgTriplet: ${{ env.VCPKG_DEFAULT_TRIPLET }} 
         vcpkgGitCommitId: '195276f71622bc41392db5c5c5c5141c95ff9a36' 
         vcpkgDirectory: ${{ github.workspace }}/vcpkg  
