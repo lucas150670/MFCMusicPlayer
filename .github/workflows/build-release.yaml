@@ -29,8 +29,8 @@ jobs:
 
     - name: Clone vcpkg
       run: |
-         git clone https://github.com/microsoft/vcpkg.git vcpkg
-         cd vcpkg
+         git clone https://github.com/microsoft/vcpkg.git ${{ github.workspace }}/vcpkg
+         cd ${{ github.workspace }}/vcpkg
          git checkout 195276f71622bc41392db5c5c5c5141c95ff9a36
 
     - name: Setup vcpkg and install FFmpeg
