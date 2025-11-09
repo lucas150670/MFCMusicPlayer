@@ -201,6 +201,8 @@ int MusicPlayer::load_audio_context_stream(CFile* file_stream)
 	// init decoder
 	frame = av_frame_alloc();
 	packet = av_packet_alloc();
+	decoder_audio_channels = codec_context->ch_layout.nb_channels;
+	decoder_audio_sample_fmt = codec_context->sample_fmt;
 	init_decoder_thread();
 	return 0;
 }
@@ -643,14 +645,13 @@ void MusicPlayer::audio_playback_worker_thread()
 		memset(out_buffer, 0, out_buffer_size);
 		while (!TryEnterCriticalSection(audio_fifo_section)) {}
 		// read_samples_from_fifo((uint8_t**)out_buffer, xaudio2_play_frame_size);
-		int channels = codec_context->ch_layout.nb_channels;
 		uint8_t** fifo_buf = NULL;
-		fifo_buf = (uint8_t**)av_calloc(channels, sizeof(uint8_t*));
+		fifo_buf = (uint8_t**)av_calloc(decoder_audio_channels, sizeof(uint8_t*));
 		int alloc_ret = 0;
-		if ((alloc_ret = av_samples_alloc(fifo_buf, NULL, channels, xaudio2_play_frame_size, codec_context->sample_fmt, 0)) < 0) {
+		if ((alloc_ret = av_samples_alloc(fifo_buf, NULL, decoder_audio_channels, xaudio2_play_frame_size, decoder_audio_sample_fmt, 0)) < 0) {
 			dialog_ffmpeg_critical_error(alloc_ret, __FILE__, __LINE__);
 			CString debug_alloc;
-			debug_alloc.Format(_T("info: avsampleformat = %d\nchannels = %d\nframe_size = %d"), codec_context->sample_fmt, channels, xaudio2_play_frame_size);
+			debug_alloc.Format(_T("info: avsampleformat = %d\nchannels = %d\nframe_size = %d"), decoder_audio_sample_fmt, decoder_audio_channels, xaudio2_play_frame_size);
 			AfxMessageBox(debug_alloc, MB_ICONERROR | MB_OK);
 			LeaveCriticalSection(audio_fifo_section);
 			LeaveCriticalSection(audio_playback_section);

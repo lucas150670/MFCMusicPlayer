@@ -30,6 +30,8 @@ class MusicPlayer
 	bool is_playing = false;
 	bool decode_in_background = false;
 	bool decoder_is_running = false;
+	int decoder_audio_channels = 0;
+	AVSampleFormat decoder_audio_sample_fmt = AV_SAMPLE_FMT_NONE;
 	HBITMAP album_art = nullptr;
 	CString song_title = {};
 	CString song_artist = {};
