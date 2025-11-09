@@ -35,6 +35,8 @@ jobs:
         vcpkgArguments: 'ffmpeg'
         vcpkgTriplet: ${{ env.VCPKG_DEFAULT_TRIPLET }} 
         vcpkgGitCommitId: '195276f71622bc41392db5c5c5c5141c95ff9a36' 
+        vcpkgDirectory: ${{ github.workspace }}/vcpkg  
+        doNotCache: true
 
     - name: Configure CMake
       run: >

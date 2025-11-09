@@ -651,6 +651,7 @@ void MusicPlayer::audio_playback_worker_thread()
 			dialog_ffmpeg_critical_error(alloc_ret, __FILE__, __LINE__);
 			CString debug_alloc;
 			debug_alloc.Format(_T("info: avsampleformat = %d\nchannels = %d\nframe_size = %d"), codec_context->sample_fmt, channels, xaudio2_play_frame_size);
+			AfxMessageBox(debug_alloc, MB_ICONERROR | MB_OK);
 			LeaveCriticalSection(audio_fifo_section);
 			LeaveCriticalSection(audio_playback_section);
 			InterlockedExchange(playback_state, audio_playback_state_stopped);
@@ -662,6 +663,7 @@ void MusicPlayer::audio_playback_worker_thread()
 			av_freep(&fifo_buf[0]);
 			av_free(fifo_buf);
 			LeaveCriticalSection(audio_fifo_section);
+			LeaveCriticalSection(audio_playback_section);
 			InterlockedExchange(playback_state, audio_playback_state_stopped);
 			break;
 		}
