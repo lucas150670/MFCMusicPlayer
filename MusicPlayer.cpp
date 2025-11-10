@@ -650,11 +650,7 @@ void MusicPlayer::audio_playback_worker_thread()
 		int alloc_ret = 0;
 		if ((alloc_ret = av_samples_alloc(fifo_buf, NULL, decoder_audio_channels, xaudio2_play_frame_size, decoder_audio_sample_fmt, 0)) < 0) {
 			dialog_ffmpeg_critical_error(alloc_ret, __FILE__, __LINE__);
-			CString debug_alloc;
-			debug_alloc.Format(_T("info: avsampleformat = %d\nchannels = %d\nframe_size = %d"), decoder_audio_sample_fmt, decoder_audio_channels, xaudio2_play_frame_size);
-			AfxMessageBox(debug_alloc, MB_ICONERROR | MB_OK);
-			LeaveCriticalSection(audio_fifo_section);
-			LeaveCriticalSection(audio_playback_section);
+			// remove duplicate check.
 			InterlockedExchange(playback_state, audio_playback_state_stopped);
 			break;
 		}
@@ -1236,46 +1232,10 @@ void MusicPlayer::dialog_ffmpeg_critical_error(int err_code, const char* file, i
 	CString res{};
 	res.Format(_T("%s (file: %s, line: %d)\n"), CString(buf).GetString(), CString(file).GetString(), line);
 	message += res;
-	message += stack_unwind();
 	AfxMessageBox(message, MB_ICONERROR);
 }
 
-CString MusicPlayer::stack_unwind()
-{
-	const int maxFrames = 64;
-	void* frames[maxFrames];
-	USHORT captured = RtlCaptureStackBackTrace(0, maxFrames, frames, nullptr);
-
-	HANDLE process = GetCurrentProcess();
-	SymInitialize(process, NULL, TRUE);
-
-	CString trace;
-	for (USHORT i = 0; i < captured; ++i) {
-		DWORD64 displacement = 0;
-		char buffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)] = {0};
-		PSYMBOL_INFO symbol = (PSYMBOL_INFO)buffer;
-		symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-		symbol->MaxNameLen = MAX_SYM_NAME;
-
-		if (SymFromAddr(process, (DWORD64)frames[i], &displacement, symbol)) {
-			trace.Append(CA2W(symbol->Name));
-
-			IMAGEHLP_LINE64 line;
-			DWORD dwDisplacement;
-			memset(&line, 0, sizeof(line));
-			line.SizeOfStruct = sizeof(line);
-
-			if (SymGetLineFromAddr64(process, (DWORD64)frames[i], &dwDisplacement, &line)) {
-				trace.AppendFormat(_T(" (%s: %d)"), CString(line.FileName).GetString(), line.LineNumber);
-			}
-			trace.Append(_T("\n"));
-		}
-	}
-
-	SymCleanup(process);
-
-	return trace;
-}
+// this stack_unwind function is not useful, removed.
 
 MusicPlayer::MusicPlayer() :
 	xaudio2_buffer_ended(DBG_NEW volatile unsigned long long),
@@ -1390,10 +1350,24 @@ MusicPlayer::~MusicPlayer()
 	stop_audio_decode();
 	uninitialize_audio_engine();
 
-	if (xaudio2_buffer_ended)	delete xaudio2_buffer_ended;
-	if (playback_state)			delete playback_state;
-	if (audio_position)			delete audio_position;
-	if (audio_fifo) 			uninitialize_audio_fifo();
+	if (xaudio2_buffer_ended)		delete xaudio2_buffer_ended;
+	if (xaudio2_thread_task_index)  delete xaudio2_thread_task_index;
+	if (playback_state)				delete playback_state;
+	if (audio_position)				delete audio_position;
+	if (audio_fifo) 				uninitialize_audio_fifo();
+
+	if (audio_playback_section) {
+		DeleteCriticalSection(audio_playback_section);
+		delete audio_playback_section;
+	}
+
+	if (audio_fifo_section) {
+		DeleteCriticalSection(audio_fifo_section);
+		delete audio_fifo_section;
+	}
+
+	if (frame_ready_event)			CloseHandle(frame_ready_event);
+	if (frame_underrun_event)		CloseHandle(frame_underrun_event);
 
 	if (file_stream)
 	{
