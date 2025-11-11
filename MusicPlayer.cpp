@@ -1376,11 +1376,3 @@ MusicPlayer::~MusicPlayer()
 		file_stream = nullptr;
 	}
 }
-
-inline float MusicPlayer::GetSystemDpiScale()
-{
-	HDC hdc = ::GetDC(NULL);
-	int dpiX = GetDeviceCaps(hdc, LOGPIXELSX);
-	::ReleaseDC(NULL, hdc);
-	return dpiX / 96.0f;
-}

@@ -137,6 +137,12 @@ public:
 
 	// destructor
 	~MusicPlayer();
-	static float GetSystemDpiScale();
+	static inline float GetSystemDpiScale()
+	{
+		HDC hdc = ::GetDC(NULL);
+		int dpiX = GetDeviceCaps(hdc, LOGPIXELSX);
+		::ReleaseDC(NULL, hdc);
+		return dpiX / 96.0f;
+	}
 };
 
