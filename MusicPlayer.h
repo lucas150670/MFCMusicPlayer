@@ -4,17 +4,17 @@
 
 class MusicPlayer
 {
-	// Á÷ÎÄ¼ş½âÎöÉÏÏÂÎÄ
+	// æµæ–‡ä»¶è§£æä¸Šä¸‹æ–‡
 	AVFormatContext* format_context = nullptr;
-	// Õë¶Ô¸ÃÎÄ¼ş£¬ÕÒµ½µÄ½âÂëÆ÷ÀàĞÍ
+	// é’ˆå¯¹è¯¥æ–‡ä»¶ï¼Œæ‰¾åˆ°çš„è§£ç å™¨ç±»å‹
 	AVCodec* codec = nullptr;
-	// Ê¹ÓÃµÄ½âÂëÆ÷ÊµÀı
+	// ä½¿ç”¨çš„è§£ç å™¨å®ä¾‹
 	AVCodecContext* codec_context = nullptr;
-	// ½âÂëÇ°µÄÊı¾İ£¨Á÷ÖĞµÄÒ»¸öpacket£©
+	// è§£ç å‰çš„æ•°æ®ï¼ˆæµä¸­çš„ä¸€ä¸ªpacketï¼‰
 	AVPacket* packet = nullptr;
-	// ½âÂëºóµÄÊı¾İ£¨Ò»Ö¡Êı¾İ£©
+	// è§£ç åçš„æ•°æ®ï¼ˆä¸€å¸§æ•°æ®ï¼‰
 	AVFrame* frame = nullptr;
-	// ÒôÆµÁ÷±àºÅ
+	// éŸ³é¢‘æµç¼–å·
 	unsigned audio_stream_index = static_cast<unsigned>(-1); // inf
 	AVIOContext* avio_context = nullptr;
 	unsigned char* buffer = nullptr;

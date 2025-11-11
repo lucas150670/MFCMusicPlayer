@@ -9,7 +9,7 @@ find_package(FFMPEG REQUIRED)
 if ((${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" AND "x${CMAKE_CXX_SIMULATE_ID}" STREQUAL "xMSVC")) # check if using clang-cl
     message("clang-cl detected!")
     add_compile_options(/EHa /EHs)
-endif ()
+endif ((${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" AND "x${CMAKE_CXX_SIMULATE_ID}" STREQUAL "xMSVC"))
 
 add_executable(MFCMusicPlayer WIN32
     MFCMusicPlayer.cpp
