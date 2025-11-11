@@ -264,7 +264,31 @@ LRESULT CMFCMusicPlayerDlg::OnAlbumArtInit(WPARAM wParam, LPARAM lParam)
 	}
 	else {
 		HBITMAP no_image = ::LoadBitmap(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDB_NOIMAGE));
-		m_labelAlbumArt.SetBitmap(no_image);
+		float aspect_ratio = MusicPlayer::GetSystemDpiScale();
+		if (fabs(aspect_ratio - 1.0f) > 1e-6) {
+			HDC hScreenDC = ::GetDC(NULL);
+			HDC hSrcDC = ::CreateCompatibleDC(hScreenDC);
+			HDC hDstDC = ::CreateCompatibleDC(hScreenDC);
+
+			HBITMAP hOldSrcBmp = (HBITMAP)::SelectObject(hSrcDC, no_image);
+			HBITMAP hScaledBitmap = ::CreateCompatibleBitmap(hScreenDC, 160 * aspect_ratio, 160 * aspect_ratio);
+			HBITMAP hOldDstBmp = (HBITMAP)::SelectObject(hDstDC, hScaledBitmap);
+			::SetStretchBltMode(hDstDC, HALFTONE); // Better quality
+			::StretchBlt(
+				hDstDC, 0, 0, 160 * aspect_ratio, 160 * aspect_ratio,
+				hSrcDC, 0, 0, 160, 160,
+				SRCCOPY
+			);
+			::SelectObject(hSrcDC, hOldSrcBmp);
+			::SelectObject(hDstDC, hOldDstBmp);
+			::DeleteDC(hSrcDC);
+			::DeleteDC(hDstDC);
+			::ReleaseDC(NULL, hScreenDC);
+			m_labelAlbumArt.SetBitmap(hScaledBitmap);
+		}
+		else {
+			m_labelAlbumArt.SetBitmap(no_image);
+		}
 	}
 	return HRESULT();
 }

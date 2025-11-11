@@ -112,7 +112,6 @@ class MusicPlayer
 
 	// debug function
 	void dialog_ffmpeg_critical_error(int err_code, const char* file, int line);
-	CString stack_unwind();
 
 public:
 	// constructor
@@ -138,5 +137,6 @@ public:
 
 	// destructor
 	~MusicPlayer();
+	static float GetSystemDpiScale();
 };
 

@@ -148,7 +148,7 @@ int MusicPlayer::load_audio_context_stream(CFile* file_stream)
 	}
 
 	if (image_stream_id != -1) {
-		album_art = decode_id3_album_art(image_stream_id, 160);
+		album_art = decode_id3_album_art(image_stream_id, 160 * GetSystemDpiScale());
 	}
 
 	AfxGetMainWnd()->PostMessage(WM_PLAYER_ALBUM_ART_INIT, reinterpret_cast<WPARAM>(album_art));
@@ -1375,4 +1375,12 @@ MusicPlayer::~MusicPlayer()
 		delete file_stream;
 		file_stream = nullptr;
 	}
+}
+
+inline float MusicPlayer::GetSystemDpiScale()
+{
+	HDC hdc = ::GetDC(NULL);
+	int dpiX = GetDeviceCaps(hdc, LOGPIXELSX);
+	::ReleaseDC(NULL, hdc);
+	return dpiX / 96.0f;
 }
