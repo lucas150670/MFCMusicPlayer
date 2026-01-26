@@ -1,17 +1,11 @@
-name: build-release
+name: Download Cache
 
 on:
   push:
-    branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
-
-env:
-  BUILD_TYPE: RelWithDebInfo
-  VCPKG_DEFAULT_TRIPLET: x64-windows
+    branches: [ "download-cache" ]
 
 jobs:
-  build:
+  dump-cache:
     runs-on: windows-latest
     strategy:
       matrix:
@@ -19,26 +13,11 @@ jobs:
         include:
           - arch: x64
             triplet: x64-windows
-            artifact: windows-build-with-ffmpeg-x64
+            artifact: cache_dump_x64
           - arch: ARM64
             triplet: arm64-windows
-            artifact: windows-build-with-ffmpeg-ARM64
-
+            artifact: cache_dump_arm64
     steps:
-
-    - name: Print runner hardware info
-      run: |
-        $cpu = Get-CimInstance Win32_Processor
-        Write-Output "Hosted Runner Information:"
-        Write-Output "CPU Model: $($cpu.Name)"
-        Write-Output "Logical Processors: $($cpu.NumberOfLogicalProcessors)"
-        Write-Output "Physical Processors: $($cpu.NumberOfCores)"
-        $mem = Get-CimInstance Win32_ComputerSystem
-        Write-Output ("Memory Size (GB): {0:N2}" -f ($mem.TotalPhysicalMemory/1GB))
-
-    - name: Checkout source
-      uses: actions/checkout@v4
-
     - name: Cache vcpkg
       uses: actions/cache@v4
       with:
@@ -48,46 +27,12 @@ jobs:
         restore-keys: |
           vcpkg-${{ runner.os }}-${{ matrix.triplet }}-
 
-    - name: Clone vcpkg
+    - name: Archive cache
       run: |
-         git clone https://github.com/microsoft/vcpkg.git ${{ github.workspace }}/vcpkg
-         cd ${{ github.workspace }}/vcpkg
-         git checkout 6d332a018c433fad20822ff4b536e4ccdc3413bd
-
-    - name: Setup vcpkg and install FFmpeg
-      uses: lukka/run-vcpkg@v7.6
-      with:
-        vcpkgArguments: 'ffmpeg rapidjson cpp-base64 openssl cppwinrt fftw3'
-        vcpkgTriplet: ${{ matrix.triplet }}
-        vcpkgGitCommitId: '6d332a018c433fad20822ff4b536e4ccdc3413bd'
-        vcpkgDirectory: ${{ github.workspace }}/vcpkg  
-        doNotCache: true
-
-    - name: Configure CMake
-      run: >
-        cmake -B build -S . 
-        -G "Visual Studio 17 2022"
-        -A ${{ matrix.arch }}
-        -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake 
-        -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
-        -Wno-dev
-
-    - name: Build
-      run: cmake --build build --config ${{ env.BUILD_TYPE }}
-
-    - name: Copy FFmpeg DLLs and executable
-      run: | 
-        mkdir package
-        Copy-Item "build\${{ env.BUILD_TYPE }}\*.exe" -Destination package
-        Get-ChildItem "${{ github.workspace }}\vcpkg\installed\${{ matrix.triplet }}\bin" -Recurse -Filter *.dll |
-        Copy-Item -Destination package
-
-    - name: Compress package to ZIP
-      run: |
-        powershell -Command "Compress-Archive -Path package\\* -DestinationPath build_output.zip"
+        tar -czf cache.tar.gz -C "${{ github.workspace }}/vcpkg" .
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.artifact }}
-        path: build_output.zip
+        path: cache.tar.gz
