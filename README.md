@@ -16,6 +16,10 @@ A Simple music player, written in C++.
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/lucas150670/MFCMusicPlayer/build-release.yaml?style=for-the-badge)
 [![State-of-the-art Shitcode](https://img.shields.io/static/v1?label=State-of-the-art&message=Shitcode&color=7B5804&style=for-the-badge)](https://github.com/trekhleb/state-of-the-art-shitcode)
 
+***
+This project will no longer be under maintenance. Farewell!
+***
+
 Features:
 - CMake build system support
 - decode & play music files with FFmpeg
